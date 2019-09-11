@@ -24,6 +24,9 @@ use flate2::Compression;
 // To Do: (but probably not for a while)
 // - gen/load maps from cli
 // - show progress bar/percent on map generation
+// - option to disable Compression
+// - option to reverse game_objects keys y,x -> x,y (most other EVERYTHINGS use x,y values)
+// - store v-regions in map for delaunay points
 
 // Map height, width, and middle locations
 const MAP_HEIGHT: i32 = 24;
@@ -142,29 +145,96 @@ fn keyboard(_win: WINDOW, stats: WINDOW, ch: i32, game_objects: &HashMap<String,
 fn gen_map(sizey: i32, sizex: i32) -> HashMap<String, Tile> {
     // Random numbers
     let mut rng = rand::thread_rng();
+    // Create a new set of game_objects for final results
+    let mut go = HashMap::new();
     // Generate v-regions based on size of map (# of regions matches maps.py YOU LIED HERE, HALF AS MANY!)
     let mut v_regions = Vec::new();
     let number_of_regions = rng.gen_range((sizey + sizex)/2, (sizey + sizex)*2);
-    for _v in 0..number_of_regions {
+    for v in 0..number_of_regions {
         let y = rng.gen_range(0, sizey);
         let x = rng.gen_range(0, sizex);
         let tile_type = rng.gen_range(0, 2);
+        // Generate a string name for v-regions, must survive in game_objects json: v# is key
+        let tv = v.to_string();
+        let mut vkey = String::from("v");
+        vkey.push_str(&tv);
         if tile_type == 0 {
             v_regions.push(Tile {y: y, x: x, c: WALL, neighbors: Vec::new()});
+            go.insert(vkey, Tile {y: y, x: x, c: WALL, neighbors: Vec::new()});
         } else {
             v_regions.push(Tile {y: y, x: x, c: FLOOR, neighbors: Vec::new()});
+            go.insert(vkey, Tile {y: y, x: x, c: FLOOR, neighbors: Vec::new()});
         }
     }
     // Add extra region for spawn location
     v_regions.push(Tile {y: MID_Y, x: MID_X, c: FLOOR, neighbors: Vec::new()});
-    // Create a new set of game_objects for modifying
-    // Due to problems dereferencing and modifying game_objects, make a new structure go
-    let mut go = HashMap::new();
+    // Connect vregions through triangulation (update v-region tile closest neighbors)
+    for v in 0..number_of_regions {
+        let mut closest1 = String::new();
+        let mut distance1 = 0;
+        let mut closest2 = String::new();
+        let mut distance2 = 0;
+        // Create vkey
+        let vkey_num = v.to_string();
+        let mut vkey = String::from("v");
+        vkey.push_str(&vkey_num);
+        // Check each region for closest neighbors
+        for vc in 0..number_of_regions {
+            // Skip if self, a points closest point can't be itself
+            if v == vc {
+                continue;
+            }
+            // Make sure distance1 is always the closest
+            if (distance1 != 0 && distance2 != 0) && distance2 < distance1 {
+                let tempdistance = distance1;
+                let tempclosest = closest1.clone();
+                distance1 = distance2;
+                closest1 = closest2.clone();
+                distance2 = tempdistance;
+                closest2 = tempclosest.clone();
+            }
+            // Create key for closest compare
+            //let vckey_num = v.to_string();
+            let mut vckey = String::from("v");
+            vckey.push_str(&v.to_string());
+            // calc distance
+            let vcdist = distance(&go[&vkey], &go[&vckey]);
+            // Just add it if it doesn't exist
+            if distance1 == 0 {
+                distance1 = vcdist;
+                closest1 = vckey.clone();
+                continue;
+            }
+            // Just add it if it doesn't exist
+            if distance2 == 0 {
+                distance2 = vcdist;
+                closest2 = vckey.clone();
+                continue;
+            }
+            // Check if distance is closer, shuffle down the largest distance
+            if vcdist < distance1 {
+                distance2 = distance1;
+                closest2 = closest1.clone();
+                distance1 = vcdist;
+                closest1 = vckey.clone();
+            }
+        }
+        // Add two closest neighbors to go map
+        let y = go[&vkey].y;
+        let x = go[&vkey].x;
+        let c = go[&vkey].c;
+        let mut neighbors = Vec::new();
+        neighbors.push(closest1.clone());
+        neighbors.push(closest2.clone());
+        go.insert(vkey, Tile {y: y, x: x, c: c, neighbors: neighbors});
+    }
+
     let mapsize = Tile {y: sizey, x: sizex, c: '$', neighbors: Vec::new()};
     let player = Tile {y: 0, x: 0, c: PLAYER, neighbors: Vec::new()};
     // Additional metadata to save in case another programs needs to know the map size
     go.insert(String::from("mapsize"), mapsize);
     go.insert(String::from("player"), player);
+    // Manually add each v-region Tile
     // Hashmap for storing tiles and map data
     let mut game_objects = HashMap::new();
     // Generate temporary tiles
