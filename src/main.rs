@@ -196,7 +196,7 @@ fn gen_map(sizey: i32, sizex: i32) -> HashMap<String, Tile> {
             // Create key for closest compare
             //let vckey_num = v.to_string();
             let mut vckey = String::from("v");
-            vckey.push_str(&v.to_string());
+            vckey.push_str(&vc.to_string());
             // calc distance
             let vcdist = distance(&go[&vkey], &go[&vckey]);
             // Just add it if it doesn't exist
