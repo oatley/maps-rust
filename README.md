@@ -57,10 +57,16 @@ cd maps-rust
 cargo build
 target/debug/maps create --file awesome_map.map.gz --size 100 --compress
 target/debug/maps view --file awesome_map.map.gz
+ls -lh resources/maps # Maps stored in here
+```
+## Create new map sized 50x50 without compression
+```
+git clone https://github.com/oatley/maps-rust
+cd maps-rust
+cargo build
 target/debug/maps create --file tiny.map --size 50
 target/debug/maps view --file tiny.map
-ls -lh resources/maps
-
+ls -lh resources/maps # Maps stored in here
 ```
 
 
