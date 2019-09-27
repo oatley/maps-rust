@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::path::Path;
-use regex::Regex;
+//use regex::Regex;
 use regex::RegexSet;
 use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
@@ -116,14 +116,14 @@ impl Validation {
 
     // Return true if file is compressed with gzip, false if not
     pub fn file_compressed(path: &str) -> bool {
-        let mut f = File::open(&path);
+        let f = File::open(&path);
         let f = match f {
             Ok(file) => file,
             Err(_error) => return false
         };
         let mut s = String::new();
         let gz = GzDecoder::new(f).read_to_string(&mut s);
-        let gz = match gz {
+        match gz {
             Ok(_buf) => return true,
             Err(_error) => return false
         };
@@ -217,6 +217,7 @@ impl Player {
     }
 }
 
+// General helper methods for displaying ncurses
 impl Curses {
     // Returns a new ncurses window with specific size (main map window)
     pub fn make_window(height: i32, width: i32) -> WINDOW {
@@ -333,67 +334,6 @@ impl CursesMenu {
         selection
     }
 }
-        /*
-        loop {
-            if ch == 'g' as i32 || ch == 'G' as i32 {
-
-                /*let path: String = self.get_map_filename(true);
-                let size: i32 = self.get_map_size();
-                map = Map::new(size, size, '#', '.', 'P');
-                Map::save_map(&path, &map, true);
-                break;*/
-            } else if ch == 'l' as i32 || ch == 'L' as i32 {
-                let path: String = self.get_map_filename(false);
-                map = Map::load_map(&path, true);
-                //game_objects = maps::load_map(&path, true);
-                break;
-            } else if ch == 'q' as i32 || ch == 'Q' as i32 {
-                Curses::exit(0);
-            }
-        }*/
-
-    //}
-
-    // Menu gives the user options to generate a new map or load a saved map
-    /*
-    pub fn main_menu (&self) -> Map {
-        let win = self.make_window();
-        let mut ch: i32;
-        //let game_objects: HashMap<String, maps::Tile>;
-        let map: Map;
-        wclear(win);
-        mvwaddstr(win, 1, 1, "G - generate new map");
-        mvwaddstr(win, 2, 1, "L - load map");
-        mvwaddstr(win, 3, 1, "Q - quit program");
-        box_(win, 0, 0);
-        wrefresh(win);
-        loop {
-            ch = wgetch(win);
-            if ch == 'g' as i32 || ch == 'G' as i32 {
-                // Get filename and size from user, generate map, write to file (possible race condition, don't care)
-                //let menu = CursesMenu::new(24, 70, "Get map filename: ");
-                // menu.ask_question_loop()?;
-                // let answer = menu.get_answer();
-                // Validation::check_file(answer);
-                let path: String = self.get_map_filename(true);
-                let size: i32 = self.get_map_size();
-                map = Map::new(size, size, '#', '.', 'P');
-                Map::save_map(&path, &map, true);
-                break;
-            } else if ch == 'l' as i32 || ch == 'L' as i32 {
-                // Get filename from user, try loading the map (should probably check for errors, but won't)
-                let path: String = self.get_map_filename(false);
-                map = Map::load_map(&path, true);
-                //game_objects = maps::load_map(&path, true);
-                break;
-            } else if ch == 'q' as i32 || ch == 'Q' as i32 {
-                // Exit program
-                Curses::exit(0);
-            }
-        }
-        endwin();
-        map
-    }*/
 
 impl CursesQuestion {
     pub fn new(height: i32, width: i32, question: &str) -> CursesQuestion {
@@ -432,34 +372,6 @@ impl CursesQuestion {
 
 }
 
-/*
-// Used for map generation, get filename, file MUST NOT already exist or error
-if Validation::file_exists(&path) {
-    // Write error message
-    let s = String::from("error: file ") + &path + " already exists";
-    mvwaddstr(win, 2, 1, &s);
-    // Reset filename input
-    continue;
-}
-// Used for map loading, get filename, file MUST exist already or error
-
-// check if filename contains non-letter or non-numbers (error out) no special characters please
-if ! Validation::validate_filename(&filename) {
-    // Clear line
-    wmove(win, 2, 1);
-    wclrtoeol(win);
-    // Write error message
-    let s = String::from("error: filename ") + &filename + " must contain only letters and numbers";
-    mvwaddstr(win, 2, 1, &s);
-    // Reset filename input
-    path.clear();
-    filename.clear();
-    continue;
-} else {
-    break;
-}
-*/
-
 // Structure for drawing map in ncurses
 impl CursesMap {
     pub fn new (height: i32, width: i32, curse_wall: char, curse_floor: char, curse_player: char) -> CursesMap {
@@ -484,7 +396,7 @@ impl CursesMap {
         refresh();
         curses_map
     }
-
+    // End current window session, restore standard terminal settings
     pub fn end(&self) {
         clear();
         curs_set(CURSOR_VISIBILITY::CURSOR_VISIBLE);
@@ -493,145 +405,10 @@ impl CursesMap {
         echo();
         endwin();
     }
-
-    fn draw_player (&self, win: WINDOW) {
-        mvwaddch(win, self.height/2, self.width/2, self.curse_player as chtype);
+    // Draw player char
+    fn draw_player (&self, win: WINDOW, player: &Player) {
+        mvwaddch(win, self.height/2, self.width/2, player.c as chtype);
     }
-
-    // Returns a new ncurses window with specific size (main map window)
-    /*fn make_window(&self) -> WINDOW {
-        let win = newwin(self.height, self.width, 0, 0);
-        box_(win, 0, 0);
-        wrefresh(win);
-        win
-    }*/
-
-    // Create new window to get filename string from user, validate string, return filename string
-    // Used for both map generation and map loading: uses check_exists to switch between each use case
-    /*fn get_create_map_filename(&self, check_exists: bool) -> String {
-        let win = self.window;
-        let mut filename  = String::new();
-        let mut path;
-        let q = String::from("Enter a filename: ");
-        let qlen = q.len() as i32;
-        let re = Regex::new(r"^[\w\d]+$").unwrap();
-        curs_set(CURSOR_VISIBILITY::CURSOR_VISIBLE);
-        echo();
-        wclear(win);
-        loop {
-            // Clear line
-            wmove(win, 1, 1);
-            wclrtoeol(win);
-            // Ask question, get string
-            mvwaddstr(win, 1, 1, &q);
-            box_(win, 0, 0);
-            wrefresh(win);
-            mvwgetstr(win, 1, qlen, &mut filename);
-            path = String::from("./resources/maps/") + &filename + ".map";
-            // Used for map generation, get filename, file MUST NOT already exist or error
-            if check_exists {
-                if Validation::file_exists(&path) {
-                    // Clear line
-                    wmove(win, 2, 1);
-                    wclrtoeol(win);
-                    // Write error message
-                    let s = String::from("error: file ") + &path + " already exists";
-                    mvwaddstr(win, 2, 1, &s);
-                    // Reset filename input
-                    path.clear();
-                    filename.clear();
-                    continue;
-                }
-            // Used for map loading, get filename, file MUST exist already or error
-            } else if ! check_exists {
-                if ! Validation::file_exists(&path) {
-                    // Clear line
-                    wmove(win, 2, 1);
-                    wclrtoeol(win);
-                    // Write error message
-                    let s = String::from("error: file ") + &path + " does not exist";
-                    mvwaddstr(win, 2, 1, &s);
-                    // Reset filename input
-                    path.clear();
-                    filename.clear();
-                    continue;
-                }
-            }
-            // check if filename contains non-letter or non-numbers (error out) no special characters please
-            if ! Validation::validate_filename(&filename) {
-                // Clear line
-                wmove(win, 2, 1);
-                wclrtoeol(win);
-                // Write error message
-                let s = String::from("error: filename ") + &filename + " must contain only letters and numbers";
-                mvwaddstr(win, 2, 1, &s);
-                // Reset filename input
-                path.clear();
-                filename.clear();
-                continue;
-            } else {
-                break;
-            }
-        }
-        // Destroy window, return valid path
-        curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
-        noecho();
-        endwin();
-        path
-    }*/
-    // Menu to ask user for size input, check if valid number, return number
-    fn get_map_size(&self) -> i32 {
-        let win = self.window;
-        let mut size  = String::new();
-        let mut num_size: i32;
-        //Size of map must be 50 or greater.
-        let q = String::from("Size: ");
-        let qlen = q.len() as i32;
-        curs_set(CURSOR_VISIBILITY::CURSOR_VISIBLE);
-        echo();
-        wclear(win);
-        loop {
-            // Clear top two lines
-            wmove(win, 1, 1);
-            wclrtoeol(win);
-            wmove(win, 2, 1);
-            wclrtoeol(win);
-            // Ask question, get string
-            mvwaddstr(win, 1, 1, "Size of map must be 50 or greater.");
-            mvwaddstr(win, 2, 1, &q);
-            box_(win, 0, 0);
-            wrefresh(win);
-            mvwgetstr(win, 1, qlen, &mut size);
-            // Check if valid integer >= 49
-            match size.trim().parse::<i32>() {
-                Ok(number) => {
-                    num_size = number;
-                    if num_size < 49 {
-                        wmove(win, 1, 0);
-                        wclrtoeol(win);
-                        let s = String::from("error: ") + &size + " must be >= 49";
-                        mvwaddstr(win, 1, 0, &s);
-                        size.clear();
-                    } else {
-                        break;
-                    }
-                },
-                Err(_error) => {
-                    wmove(win, 1, 0);
-                    wclrtoeol(win);
-                    let s = String::from("error: ") + &size + " not integer";
-                    mvwaddstr(win, 1, 0, &s);
-                    size.clear();
-                },
-            }
-        }
-        // Destroy window, return valid int
-        noecho();
-        curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
-        endwin();
-        num_size
-    }
-
     // Draws the map. Only draws tiles within players view window, ignores rest of map.
     fn draw_map(&self, game_objects: &HashMap<String, Tile>, player: &Player) {
         let mid_y = self.height / 2;
@@ -656,7 +433,7 @@ impl CursesMap {
         // Draw map border and player on top of the map
         box_(self.window, 0,0);
         wattr_on(self.window, COLOR_PAIR(self.curse_color_player));
-        self.draw_player(self.window);
+        self.draw_player(self.window, player);
         wattr_off(self.window, COLOR_PAIR(self.curse_color_player));
     }
     // Draws a window to the right of screen with position data
@@ -707,7 +484,6 @@ impl CursesMap {
      }
 }
 
-
 impl Tile {
     pub fn new(y: i32, x: i32, c: char, neighbors: Vec<String>) -> Tile {
         Tile { y: y, x: x, c: c, neighbors: neighbors }
@@ -728,7 +504,6 @@ impl Tile {
         let distance = (v.y - t.y).abs() + (v.x - t.x).abs();
         distance
     }
-
     // Calculate distance between tiles for v-regions in gen_map
     pub fn distance_slow(v: &Tile, t: &Tile) -> i32 {
         let y = (v.y - t.y).pow(2) as f64;
@@ -740,7 +515,7 @@ impl Tile {
 
 // Structure to store map into file or load from file
 impl Map {
-    // Gen map is used to create a variable sized map using voronoi regions (can be very slow)
+    // Gen map is used to create a variable sized map using voronoi regions (can be very slow) (needs rewrite plz)
     pub fn new(sizey: i32, sizex: i32, map_wall: char, map_floor: char, map_player: char) -> Map {
         // Random numbers
         let mut rng = rand::thread_rng();
@@ -818,8 +593,6 @@ impl Map {
         // This could be done by making an additional pass over the neighbors and eliminating any that have bad characteristics
         // This could also lead to a situation where, if a point cannot be used in any valid triangles, we destroy it
         //take a break from this for now, lost motivatio    n
-
-
         let mapsize = Tile::new(sizey, sizex, '$', Vec::new());
         let player = Tile::new(0, 0, map_player, Vec::new());
         // Additional metadata to save in case another programs needs to know the map size
@@ -909,7 +682,6 @@ impl Map {
         let enc = GzEncoder::new(file, Compression::default());
         enc
     }
-
     // Write wrapper to decompress file, return string
     pub fn decompress(f: &std::fs::File) -> String{
         let mut s = String::new();
